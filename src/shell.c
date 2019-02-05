@@ -58,6 +58,7 @@ void execSubCommand(char** cmd, char const* in, char const* out)
       }
     }
 
+    signal(SIGINT, SIG_DFL);
     if (execvp(*cmd, cmd) < 0)
     {
       fprintf(stderr, "command not found: %s\n", *cmd);
@@ -66,9 +67,11 @@ void execSubCommand(char** cmd, char const* in, char const* out)
   }
   else
   {
+    signal(SIGINT, SIG_IGN);
     int status;
     wait(&status);
     handleStatus(status);
+    signal(SIGINT, ctrlCNothing);
   }
 }
 
