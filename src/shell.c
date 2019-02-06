@@ -16,7 +16,7 @@
 
 void prompt()
 {
-  printf("shell> ");
+  printf("\033[0Gshell> ");
   fflush(stdout);
 }
 
@@ -72,11 +72,13 @@ void callExec(CmdLine cmdL, int no)
 
 void execSubCommand(CmdLine cmdL)
 {
+  pid_t* pids = malloc(sizeof(pid_t) * cmdL->seqSize);
+
   // No pipe
   if (cmdL->seq[1] == NULL)
   {
-    pid_t pid = fork();
-    if (pid == 0)
+    pids[0] = fork();
+    if (pids[0] == 0)
     {
       // For the first process in the pipe
       int in = openIn(cmdL->in, READ);
@@ -95,14 +97,6 @@ void execSubCommand(CmdLine cmdL)
       }
       callExec(cmdL, 0);
     }
-    else
-    {
-      signal(SIGINT, SIG_IGN);
-      int status;
-      wait(&status);
-      handleStatus(status);
-      signal(SIGINT, ctrlCHandler);
-    }
   }
   // With pipe(s)
   else
@@ -110,8 +104,8 @@ void execSubCommand(CmdLine cmdL)
     int pipeDesc[2];
     pipe(pipeDesc);
 
-    pid_t pid = fork();
-    if (pid == 0)
+    pids[0] = fork();
+    if (pids[0] == 0)
     {
       // Redirect input file for the first process in the pipe
       int in = openIn(cmdL->in, READ);
@@ -127,8 +121,8 @@ void execSubCommand(CmdLine cmdL)
     }
     else
     {
-      pid_t pid = fork();
-      if (pid == 0)
+      pids[1] = fork();
+      if (pids[1] == 0)
       {
         // Redirect output file for the last process in the pipe
         int out = openIn(cmdL->out, WRITE);
@@ -146,14 +140,21 @@ void execSubCommand(CmdLine cmdL)
       {
         close(pipeDesc[PIPE_READ]);
         close(pipeDesc[PIPE_WRITE]);
-        signal(SIGINT, SIG_IGN);
-        int status;
-        wait(&status);
-        handleStatus(status);
-        signal(SIGINT, ctrlCHandler);
       }
     }
   }
+  if (!cmdL->bg)
+  {
+    signal(SIGINT, SIG_IGN);
+    int status;
+    for (size_t i = 0; i < cmdL->seqSize; i++)
+    {
+      waitpid(pids[i], &status, 0);
+      handleStatus(status);
+    }
+    signal(SIGINT, ctrlCHandler);
+  }
+  free(pids);
 }
 
 /**
@@ -213,6 +214,11 @@ int main()
       /* Syntax error, read another command */
       printf("error: %s\n", l->err);
       continue;
+    }
+
+    if (l->bg)
+    {
+      printf("bg\n");
     }
 
     for (i = 0; l->seq[i] != NULL; i++)

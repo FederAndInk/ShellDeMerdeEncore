@@ -202,6 +202,7 @@ struct cmdline* readcmd(void)
   s->in = 0;
   s->out = 0;
   s->seq = 0;
+  s->bg = false;
 
   i = 0;
   while ((w = words[i++]) != 0)
@@ -252,12 +253,17 @@ struct cmdline* readcmd(void)
       cmd[0] = 0;
       cmd_len = 0;
       break;
+    case '&':
+      s->bg = true;
+      break;
     default:
       cmd = xrealloc(cmd, (cmd_len + 2) * sizeof(char*));
       cmd[cmd_len++] = w;
       cmd[cmd_len] = 0;
     }
   }
+
+  s->seqSize = seq_len + 1;
 
   if (cmd_len != 0)
   {
