@@ -25,37 +25,44 @@ void exitShell()
 
 void handleStatus(int status) {}
 
-void execSubCommand(char** cmd, char const* in, char const* out)
+int const WRITE = O_CREAT | O_WRONLY;
+int const READ = O_RDONLY;
+int const NO_FILE = -1;
+
+int openIn(char const* path, int mod)
+{
+  if (!path)
+  {
+    return NO_FILE;
+  }
+  else
+  {
+    int desc = open(path, mod, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    if (desc >= 0)
+    {
+      return desc;
+    }
+    else
+    {
+      perror(path);
+      exit(1);
+    }
+  }
+}
+
+void execSubCommand(char** cmd, int in, int out)
 {
   pid_t pid = fork();
   if (pid == 0)
   {
-    if (out)
+    if (out >= 0)
     {
-      int outDesc = open(out, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-      if (outDesc >= 0)
-      {
-        dup2(outDesc, STDOUT_FILENO);
-      }
-      else
-      {
-        perror(out);
-        exit(1);
-      }
+      dup2(out, STDOUT_FILENO);
     }
 
-    if (in)
+    if (in >= 0)
     {
-      int inDesc = open(in, O_RDONLY);
-      if (inDesc >= 0)
-      {
-        dup2(inDesc, STDIN_FILENO);
-      }
-      else
-      {
-        perror(in);
-        exit(1);
-      }
+      dup2(in, STDIN_FILENO);
     }
 
     signal(SIGINT, SIG_DFL);
@@ -71,7 +78,7 @@ void execSubCommand(char** cmd, char const* in, char const* out)
     int status;
     wait(&status);
     handleStatus(status);
-    signal(SIGINT, ctrlCNothing);
+    signal(SIGINT, ctrlCHandler);
   }
 }
 
@@ -80,9 +87,9 @@ void execSubCommand(char** cmd, char const* in, char const* out)
  * 
  * @param cmd 
  */
-void processCommands(CmdLine l, size_t no)
+void processCommands(CmdLine l)
 {
-  char** cmd = l->seq[no];
+  char** cmd = l->seq[0];
 
   // Internal commands
   if (strcmp("quit", cmd[0]) == 0)
@@ -92,12 +99,12 @@ void processCommands(CmdLine l, size_t no)
   else if (strcmp("clear", cmd[0]) == 0)
   {
     printf("clearing\n");
-    execSubCommand(cmd, NULL, NULL);
+    execSubCommand(cmd, NO_FILE, NO_FILE);
   }
   // Other commands
   else
   {
-    execSubCommand(cmd, l->in, l->out);
+    execSubCommand(cmd, openIn(l->in, READ), openIn(l->out, WRITE));
   }
 }
 
@@ -109,7 +116,7 @@ int main()
     int             i, j;
 
     // block ctrl+c signal
-    signal(SIGINT, ctrlCNothing);
+    signal(SIGINT, ctrlCHandler);
 
     prompt();
     l = readcmd();
@@ -127,26 +134,6 @@ int main()
       continue;
     }
 
-    if (l->in)
-    {
-      printf("in: %s\n", l->in);
-    }
-    if (l->out)
-    {
-      printf("out: %s\n", l->out);
-    }
-
-    /* Display each command of the pipe */
-    for (i = 0; l->seq[i] != 0; i++)
-    {
-      char** cmd = l->seq[i];
-      printf("seq[%d]: ", i);
-      for (j = 0; cmd[j] != 0; j++)
-      {
-        printf("%s ", cmd[j]);
-      }
-      printf("\n");
-      processCommands(l, i);
-    }
+    processCommands(l);
   }
 }
