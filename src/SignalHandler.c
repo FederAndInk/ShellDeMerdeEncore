@@ -5,14 +5,16 @@
 
 void ctrlCHandler(int i)
 {
-  printf("\n");
-  prompt();
+    printf("\n");
+    prompt();
 }
 
 void childHandler(int i)
 {
-  // TODO: to complete
-  int status;
-  waitpid(-1, &status, WNOHANG | WUNTRACED);
-  handleStatus(status);
+    // TODO: to complete
+    int status;
+    while (waitpid(-1, &status, WNOHANG | WUNTRACED) >= 0)
+    {
+        handleStatus(status);
+    }
 }
