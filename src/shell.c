@@ -101,8 +101,12 @@ void execSubCommand(CmdLine cmdL)
   // With pipe(s)
   else
   {
-    int pipeDesc[2];
-    pipe(pipeDesc);
+    struct PipeArray
+    {
+      int p[2];
+    }* pipeDesc = malloc(sizeof(struct PipeArray) * cmdL->seqSize - 1);
+
+    pipe(pipeDesc[0].p);
 
     pids[0] = fork();
     if (pids[0] == 0)
@@ -114,9 +118,9 @@ void execSubCommand(CmdLine cmdL)
         dup2(in, STDIN_FILENO);
         close(in);
       }
-      close(pipeDesc[PIPE_READ]);
-      dup2(pipeDesc[PIPE_WRITE], STDOUT_FILENO);
-      close(pipeDesc[PIPE_WRITE]);
+      close(pipeDesc[0].p[PIPE_READ]);
+      dup2(pipeDesc[0].p[PIPE_WRITE], STDOUT_FILENO);
+      close(pipeDesc[0].p[PIPE_WRITE]);
       callExec(cmdL, 0);
     }
     else
@@ -131,17 +135,18 @@ void execSubCommand(CmdLine cmdL)
           dup2(out, STDOUT_FILENO);
           close(out);
         }
-        close(pipeDesc[PIPE_WRITE]);
-        dup2(pipeDesc[PIPE_READ], STDIN_FILENO);
-        close(pipeDesc[PIPE_READ]);
+        close(pipeDesc[0].p[PIPE_WRITE]);
+        dup2(pipeDesc[0].p[PIPE_READ], STDIN_FILENO);
+        close(pipeDesc[0].p[PIPE_READ]);
         callExec(cmdL, 1);
       }
       else
       {
-        close(pipeDesc[PIPE_READ]);
-        close(pipeDesc[PIPE_WRITE]);
+        close(pipeDesc[0].p[PIPE_READ]);
+        close(pipeDesc[0].p[PIPE_WRITE]);
       }
     }
+    free(pipeDesc);
   }
   if (!cmdL->bg)
   {
