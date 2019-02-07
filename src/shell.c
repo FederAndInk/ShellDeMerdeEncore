@@ -38,6 +38,13 @@ int const WRITE = O_CREAT | O_WRONLY;
 int const READ = O_RDONLY;
 int const NO_FILE = -1;
 
+/**
+ * @brief open file in mode mod 
+ * (WRITE, READ)
+ * @param path 
+ * @param mod 
+ * @return int 
+ */
 int openIn(char const* path, int mod)
 {
   if (!path)
@@ -59,9 +66,8 @@ int openIn(char const* path, int mod)
   }
 }
 
-void callExec(CmdLine cmdL, int no)
+void callExec(char** cmd)
 {
-  char** cmd = cmdL->seq[no];
   signal(SIGINT, SIG_DFL);
   if (execvp(*cmd, cmd) < 0)
   {
@@ -70,33 +76,50 @@ void callExec(CmdLine cmdL, int no)
   }
 }
 
-void execSubCommand(CmdLine cmdL)
+/**
+ * @brief 
+ * Execute the subcommand cmd in a fork
+ * closing in and out in the parent
+ * 
+ * @param cmd command
+ * @param in file descriptor to use as stdin (NO_FILE can be used to keep stdin)
+ * @param out file descriptor to use as stdout (NO_FILE can be used to keep stdout)
+ */
+pid_t execSubCommand(char** cmd, int in, int out)
+{
+  pid_t pid = fork();
+  if (pid == 0)
+  {
+    if (in >= 0)
+    {
+      dup2(in, STDIN_FILENO);
+      close(in);
+    }
+    if (out >= 0)
+    {
+      dup2(out, STDOUT_FILENO);
+      close(out);
+    }
+    callExec(cmd);
+  }
+  else
+  {
+    close(in);
+    close(out);
+  }
+  return pid;
+}
+
+void execCommands(CmdLine cmdL)
 {
   pid_t* pids = malloc(sizeof(pid_t) * cmdL->seqSize);
 
   // No pipe
   if (cmdL->seq[1] == NULL)
   {
-    pids[0] = fork();
-    if (pids[0] == 0)
-    {
-      // For the first process in the pipe
-      int in = openIn(cmdL->in, READ);
-      if (in >= 0)
-      {
-        dup2(in, STDIN_FILENO);
-        close(in);
-      }
-
-      // For the last process in the pipe
-      int out = openIn(cmdL->out, WRITE);
-      if (out >= 0)
-      {
-        dup2(out, STDOUT_FILENO);
-        close(out);
-      }
-      callExec(cmdL, 0);
-    }
+    int in = openIn(cmdL->in, READ);
+    int out = openIn(cmdL->out, WRITE);
+    pids[0] = execSubCommand(cmdL->seq[0], in, out);
   }
   // With pipe(s)
   else
@@ -108,11 +131,11 @@ void execSubCommand(CmdLine cmdL)
 
     pipe(pipeDesc[0].p);
 
+      int in = openIn(cmdL->in, READ);
     pids[0] = fork();
     if (pids[0] == 0)
     {
       // Redirect input file for the first process in the pipe
-      int in = openIn(cmdL->in, READ);
       if (in >= 0)
       {
         dup2(in, STDIN_FILENO);
@@ -121,7 +144,7 @@ void execSubCommand(CmdLine cmdL)
       close(pipeDesc[0].p[PIPE_READ]);
       dup2(pipeDesc[0].p[PIPE_WRITE], STDOUT_FILENO);
       close(pipeDesc[0].p[PIPE_WRITE]);
-      callExec(cmdL, 0);
+      callExec(cmdL->seq[0]);
     }
     else
     {
@@ -138,7 +161,7 @@ void execSubCommand(CmdLine cmdL)
         close(pipeDesc[0].p[PIPE_WRITE]);
         dup2(pipeDesc[0].p[PIPE_READ], STDIN_FILENO);
         close(pipeDesc[0].p[PIPE_READ]);
-        callExec(cmdL, 1);
+        callExec(cmdL->seq[1]);
       }
       else
       {
@@ -179,12 +202,12 @@ void processCommands(CmdLine l)
   else if (strcmp("clear", cmd[0]) == 0)
   {
     printf("clearing\n");
-    execSubCommand(l);
+    execCommands(l);
   }
   // Other commands
   else
   {
-    execSubCommand(l);
+    execCommands(l);
   }
 }
 
