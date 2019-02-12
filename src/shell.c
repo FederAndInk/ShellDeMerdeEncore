@@ -84,8 +84,9 @@ void callExec(char** cmd)
  * @param cmd command
  * @param in file descriptor to use as stdin (NO_FILE can be used to keep stdin)
  * @param out file descriptor to use as stdout (NO_FILE can be used to keep stdout)
+ * @param fdToClose file descriptor to close in  the child (NO_FILE can be used to do nothing)
  */
-pid_t execSubCommand(char** cmd, int in, int out)
+pid_t execSubCommand(char** cmd, int in, int out, int fdToClose)
 {
   pid_t pid = fork();
   if (pid == 0)
@@ -100,6 +101,11 @@ pid_t execSubCommand(char** cmd, int in, int out)
       dup2(out, STDOUT_FILENO);
       close(out);
     }
+    if (fdToClose >= 0)
+    {
+      close(fdToClose);
+    }
+
     callExec(cmd);
   }
   else
@@ -119,7 +125,7 @@ void execCommands(CmdLine cmdL)
   {
     int in = openIn(cmdL->in, READ);
     int out = openIn(cmdL->out, WRITE);
-    pids[0] = execSubCommand(cmdL->seq[0], in, out);
+    pids[0] = execSubCommand(cmdL->seq[0], in, out, NO_FILE);
   }
   // With pipe(s)
   else
@@ -127,47 +133,25 @@ void execCommands(CmdLine cmdL)
     struct PipeArray
     {
       int p[2];
-    }* pipeDesc = malloc(sizeof(struct PipeArray) * cmdL->seqSize - 1);
+    }* pipeDesc = malloc(sizeof(struct PipeArray) * (cmdL->seqSize - 1));
 
     pipe(pipeDesc[0].p);
 
-      int in = openIn(cmdL->in, READ);
-    pids[0] = fork();
-    if (pids[0] == 0)
+    int in = openIn(cmdL->in, READ);
+    pids[0] = execSubCommand(cmdL->seq[0], in, pipeDesc[0].p[PIPE_WRITE],
+                             pipeDesc[0].p[PIPE_READ]);
+    size_t i;
+    for (i = 1; i < cmdL->seqSize - 1; i++)
     {
-      // Redirect input file for the first process in the pipe
-      if (in >= 0)
-      {
-        dup2(in, STDIN_FILENO);
-        close(in);
-      }
-      close(pipeDesc[0].p[PIPE_READ]);
-      dup2(pipeDesc[0].p[PIPE_WRITE], STDOUT_FILENO);
-      close(pipeDesc[0].p[PIPE_WRITE]);
-      callExec(cmdL->seq[0]);
+      pipe(pipeDesc[i].p);
+      pids[i] = execSubCommand(cmdL->seq[i], pipeDesc[i - 1].p[PIPE_READ],
+                               pipeDesc[i].p[PIPE_WRITE], pipeDesc[i].p[PIPE_READ]);
     }
-    else
+
+    if (pids[i - 1] != 0)
     {
-      pids[1] = fork();
-      if (pids[1] == 0)
-      {
-        // Redirect output file for the last process in the pipe
-        int out = openIn(cmdL->out, WRITE);
-        if (out >= 0)
-        {
-          dup2(out, STDOUT_FILENO);
-          close(out);
-        }
-        close(pipeDesc[0].p[PIPE_WRITE]);
-        dup2(pipeDesc[0].p[PIPE_READ], STDIN_FILENO);
-        close(pipeDesc[0].p[PIPE_READ]);
-        callExec(cmdL->seq[1]);
-      }
-      else
-      {
-        close(pipeDesc[0].p[PIPE_READ]);
-        close(pipeDesc[0].p[PIPE_WRITE]);
-      }
+      int out = openIn(cmdL->out, WRITE);
+      pids[i] = execSubCommand(cmdL->seq[i], pipeDesc[i - 1].p[PIPE_READ], out, NO_FILE);
     }
     free(pipeDesc);
   }
