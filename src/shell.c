@@ -133,7 +133,8 @@ void execCommands(CmdLine cmdL)
     struct PipeArray
     {
       int p[2];
-    }* pipeDesc = malloc(sizeof(struct PipeArray) * (cmdL->seqSize - 1));
+    }* pipeDesc =
+        (struct PipeArray*)malloc(sizeof(struct PipeArray) * (cmdL->seqSize - 1));
 
     pipe(pipeDesc[0].p);
 
