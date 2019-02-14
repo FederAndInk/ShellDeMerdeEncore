@@ -199,14 +199,13 @@ void processCommands(CmdLine l)
 int main()
 {
   signal(SIGCHLD, childHandler);
+  // block ctrl+c signal
+  signal(SIGINT, ctrlCHandler);
 
   while (1)
   {
     struct cmdline* l;
     int             i, j;
-
-    // block ctrl+c signal
-    signal(SIGINT, ctrlCHandler);
 
     prompt();
     l = readcmd();
