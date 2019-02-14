@@ -233,16 +233,16 @@ int main()
       printf("bg\n");
     }
 
-    for (i = 0; l->seq[i] != NULL; i++)
-    {
-      char** cmd = l->seq[i];
-      printf("seq[%d]: ", i);
-      for (j = 0; cmd[j] != 0; j++)
-      {
-        printf("%s ", cmd[j]);
-      }
-      printf("\n");
-    }
+    // for (i = 0; l->seq[i] != NULL; i++)
+    // {
+    //   char** cmd = l->seq[i];
+    //   printf("seq[%d]: ", i);
+    //   for (j = 0; cmd[j] != 0; j++)
+    //   {
+    //     printf("%s ", cmd[j]);
+    //   }
+    //   printf("\n");
+    // }
 
     processCommands(l);
   }

@@ -1,0 +1,7 @@
+#
+# test05.txt - Tester un pipe puis un multipipe
+#
+ls | wc
+echo
+ls | wc | wc
+echo

@@ -254,7 +254,7 @@ struct cmdline* readcmd(void)
       cmd_len = 0;
       break;
     case '&':
-      if (words[i] == 0)
+      if (words[i] == 0 && cmd_len != 0)
       {
         s->bg = true;
       }

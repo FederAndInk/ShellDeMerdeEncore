@@ -1,0 +1,9 @@
+#
+# test09.txt - ERREURs
+#
+# au moins on est sûr quelle n'existe pas
+je_nexiste_pas.exe
+&
+|
+ls & ls
+ls |

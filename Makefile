@@ -4,13 +4,13 @@
 .SUFFIXES:
 
 CC=gcc
-CFLAGS=-Wall -g -fsanitize=undefined,address
+CFLAGS=-Wall -g
 VPATH=src/
 
 # Note: -lnsl does not seem to work on Mac OS but will
 # probably be necessary on Solaris for linking network-related functions 
 #LIBS += -lsocket -lnsl -lrt
-LIBS+=-lpthread -fsanitize=undefined,address
+LIBS+=-lpthread
 
 INCLUDE = SignalHandler.h shell.h readcmd.h csapp.h
 OBJS = SignalHandler.o readcmd.o csapp.o

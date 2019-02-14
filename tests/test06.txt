@@ -1,0 +1,11 @@
+#
+# test06.txt - Tester un multipipe avec une redirection de fichiers
+#
+wc < tests/test05.txt
+echo
+cat tests/test05.txt | wc > res
+echo cat res
+cat res
+echo cat res2
+cat < tests/test05.txt | wc > res2
+cat res2

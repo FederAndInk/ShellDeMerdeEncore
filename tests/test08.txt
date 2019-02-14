@@ -1,0 +1,4 @@
+#
+# test08.txt - Multipipe sur un processus en arrière plan
+#
+cat tests/test05.txt | wc | wc &

@@ -1,0 +1,8 @@
+#
+# test07.txt - Lancer un processus en arrière plan puis le tuer
+#
+./tests/loop &
+ps
+SLEEP 3
+killall loop
+ps
