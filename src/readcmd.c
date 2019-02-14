@@ -254,7 +254,15 @@ struct cmdline* readcmd(void)
       cmd_len = 0;
       break;
     case '&':
-      s->bg = true;
+      if (words[i] == 0)
+      {
+        s->bg = true;
+      }
+      else
+      {
+        s->err = "misplaced &";
+        goto error;
+      }
       break;
     default:
       cmd = xrealloc(cmd, (cmd_len + 2) * sizeof(char*));

@@ -216,15 +216,15 @@ int main()
       exitShell();
     }
 
-    if (l->seq[0] == NULL)
-    {
-      continue;
-    }
-
     if (l->err)
     {
       /* Syntax error, read another command */
       printf("error: %s\n", l->err);
+      continue;
+    }
+
+    if (l->seq[0] == NULL)
+    {
       continue;
     }
 
